@@ -150,6 +150,7 @@
         .chat-layout {
             display: flex;
             height: 100%;
+            position: relative;
         }
         .sidebar {
             width: 300px;
@@ -157,6 +158,7 @@
             display: flex;
             flex-direction: column;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease-out; 
         }
         .user-info {
             padding: 20px;
@@ -195,6 +197,7 @@
         .user-actions {
             display: flex;
             gap: 5px;
+            margin-left: auto;
         }
         .icon-btn {
             background: none;
@@ -205,6 +208,7 @@
             padding: 5px;
             border-radius: 5px;
             transition: all 0.3s;
+            line-height: 1; /* Garantir alinhamento de ícones de texto */
         }
         .icon-btn:hover {
             background: #f5f5f5;
@@ -583,15 +587,57 @@
         }
         .hidden { display: none !important; }
         .highlight { background-color: #ffeb3b; padding: 2px 4px; border-radius: 3px; font-weight: 600; }
+
+        /* ----------------------------------------------------- */
+        /* CSS OTIMIZADO PARA RESPONSIVIDADE EM DISPOSITIVOS MÓVEIS */
+        /* ----------------------------------------------------- */
         @media (max-width: 768px) {
-            .sidebar { width: 100%; max-width: 280px; }
-            .message-bubble { max-width: 80%; }
-            .chat-search { width: 150px; }
+            /* 1. Sidebar oculta por padrão em mobile */
+            .sidebar {
+                position: absolute; 
+                z-index: 500;
+                transform: translateX(-100%); 
+                transition: transform 0.3s ease-out;
+                height: 100%;
+                width: 100%;
+                max-width: 280px; 
+                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
+            }
+
+            /* Classe JS para exibir a sidebar */
+            .sidebar.show-mobile {
+                transform: translateX(0);
+            }
+            
+            /* 2. Área de Chat ocupa 100% da largura */
+            .chat-area {
+                width: 100%;
+                flex: 1;
+            }
+            
+            .chat-header {
+                padding: 15px;
+                justify-content: flex-start;
+            }
+
+            /* Garante que o botão de menu (☰) esteja visível e o search do chat escondido */
+            .chat-search {
+                display: none; 
+            }
+            
+            /* Ajusta o espaçamento do botão de menu */
+            .chat-header-left {
+                gap: 10px;
+            }
+
+            /* Aumenta o espaço para a bolha de mensagem */
+            .message-bubble { 
+                max-width: 90%; 
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Login Screen -->
     <div id="loginScreen" class="login-container">
         <div class="login-box">
             <div class="login-header">
@@ -621,10 +667,9 @@
         </div>
     </div>
 
-    <!-- Chat Screen -->
     <div id="chatScreen" class="chat-container">
         <div class="chat-layout">
-            <div class="sidebar">
+            <div class="sidebar" id="sidebar">
                 <div class="user-info" onclick="openSettings()">
                     <div class="user-avatar" id="userAvatar">😊</div>
                     <div class="user-details">
@@ -660,9 +705,10 @@
                     </div>
                 </div>
             </div>
-            <div class="chat-area">
+            <div class="chat-area" id="chatArea">
                 <div class="chat-header">
                     <div class="chat-header-left">
+                        <button type="button" class="icon-btn" onclick="toggleSidebar()" title="Abrir Menu" style="font-size: 24px; padding: 0;">☰</button>
                         <div class="chat-icon" id="chatIcon">👥</div>
                         <div>
                             <div class="chat-title" id="chatTitle">Sala Aberta</div>
@@ -680,6 +726,8 @@
                 <div class="message-input-container">
                     <div class="emoji-picker" id="emojiPicker"></div>
                     <div class="message-input-wrapper">
+                        <button type="button" class="icon-btn" onclick="openCalculator()" title="Abrir Calculadora">🔢</button>
+                        <button type="button" class="icon-btn" onclick="openSpreadsheet()" title="Abrir Planilha Colaborativa">📋</button>
                         <button type="button" class="mention-btn" onclick="openUsersModal()" title="Lista de Usuários e Favoritos">@</button>
                         <label for="fileInput" class="file-btn" title="Anexar Arquivo">📎</label>
                         <input type="file" id="fileInput" style="display: none;" onchange="handleFileUpload()">
@@ -692,7 +740,6 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -722,7 +769,6 @@
         </div>
     </div>
 
-    <!-- Users Modal -->
     <div id="usersModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -779,6 +825,7 @@
                 document.getElementById('customAvatarPreview').style.display = 'block';
                 // Remove seleção de emojis
                 document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+                // Não salva aqui, apenas prepara para saveSettings
             };
             reader.readAsDataURL(file);
         }
@@ -844,7 +891,7 @@
                 senha,
                 displayName: email.split('@')[0],
                 avatar: '😊',
-                avatarType: 'emoji' // 'emoji' ou 'image'
+                avatarType: 'emoji'
             };
             state.users.push(state.currentUser);
             showChat();
@@ -880,9 +927,10 @@
             if (nameEl) nameEl.textContent = state.currentUser.displayName;
             if (avatarEl) {
                 if (state.currentUser.avatarType === 'image') {
+                    // Limpa o conteúdo de texto antes de adicionar a imagem
+                    avatarEl.textContent = '';
                     avatarEl.innerHTML = `<img src="${state.currentUser.avatar}" alt="Avatar">`;
                 } else {
-                    avatarEl.textContent = state.currentUser.avatar;
                     avatarEl.innerHTML = state.currentUser.avatar;
                 }
             }
@@ -898,6 +946,8 @@
             document.getElementById('fontSizeSetting').value = state.fontSize;
             const preview = document.getElementById('customAvatarPreview');
             const img = document.getElementById('customAvatarImg');
+            
+            // Define o estado inicial do preview de imagem
             if (state.currentUser.avatarType === 'image') {
                 img.src = state.currentUser.avatar;
                 preview.style.display = 'block';
@@ -928,14 +978,46 @@
         function saveSettings() {
             const displayName = document.getElementById('displayName').value.trim();
             const newFontSize = parseInt(document.getElementById('fontSizeSetting').value);
+            
+            // Lógica ajustada para salvar o avatar
+            const customAvatarPreview = document.getElementById('customAvatarPreview');
+            if (customAvatarPreview.style.display !== 'none') {
+                // Se a pré-visualização de imagem estiver visível, use ela
+                const customAvatarImg = document.getElementById('customAvatarImg');
+                state.currentUser.avatar = customAvatarImg.src;
+                state.currentUser.avatarType = 'image';
+            } 
+            // Se o customAvatarPreview estiver escondido, os valores de emoji definidos em selectAvatar serão usados (state já foi atualizado por selectAvatar)
+
             if (displayName) state.currentUser.displayName = displayName;
             if (newFontSize >= 10 && newFontSize <= 24) state.fontSize = newFontSize;
+            
             updateUserDisplay();
             applyFontSize();
             closeSettings();
             renderMessages();
             alert('✅ Configurações salvas!');
         }
+        
+        // NOVO: Funções de Ferramenta
+        function openCalculator() {
+            if (state.currentRoomType === 'sala' && state.currentRoom === 'aberta') {
+                alert("A calculadora está disponível apenas em Salas Privadas ou Grupos de trabalho.");
+                return;
+            }
+            alert("🔢 Calculadora Integrada: Abrindo interface de cálculo...");
+            // Aqui seria a lógica para abrir um modal de calculadora
+        }
+
+        function openSpreadsheet() {
+            if (state.currentRoomType === 'sala' && state.currentRoom === 'aberta') {
+                alert("A planilha colaborativa está disponível apenas em Salas Privadas ou Grupos de trabalho.");
+                return;
+            }
+            alert("📋 Planilha Colaborativa: Abrindo interface de planilha...");
+            // Aqui seria a lógica para abrir um mini-aplicativo de planilha
+        }
+        // FIM NOVO: Funções de Ferramenta
 
         // Usuários e Favoritos
         function openUsersModal() {
@@ -978,7 +1060,7 @@
                 return;
             }
             container.innerHTML = favs.map(u => `
-                <button type="button" class="room-btn" onclick="switchToPrivate(${u.id})">
+                <button type="button" class="room-btn" onclick="switchToPrivate(${u.id})" data-room="user_${u.id}">
                     <span class="room-icon">${u.avatarType === 'image' ? `<img src="${u.avatar}" style="width:18px;height:18px;object-fit:cover;border-radius:50%;">` : u.avatar}</span>
                     <span>${u.displayName}</span>
                     <span class="room-delete" onclick="removeFavoriteUser(event, ${u.id})">❌</span>
@@ -1013,7 +1095,7 @@
         function renderGroups() {
             const container = document.getElementById('groupsList');
             container.innerHTML = state.groups.map(g => `
-                <button type="button" class="room-btn" onclick="switchRoom('${g.id}', 'group')">
+                <button type="button" class="room-btn" onclick="switchRoom('${g.id}', 'group')" data-room="${g.id}">
                     <span class="room-icon">${g.icon}</span>
                     <span>${g.name}</span>
                     <span class="room-delete" onclick="deleteGroup(event, '${g.id}')">🗑️</span>
@@ -1030,32 +1112,42 @@
                 renderGroups();
             }
         }
+        
+        // NOVO: Função para alternar a visibilidade da sidebar (mobile)
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            // Verifica se a tela é mobile antes de alternar a classe
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('show-mobile');
+            }
+        }
 
         // Troca de sala
         function switchRoom(roomId, type, userId = null) {
             state.currentRoom = roomId;
             state.currentRoomType = type;
             document.querySelectorAll('.room-btn').forEach(btn => btn.classList.remove('active'));
-            const btn = document.querySelector(`[data-room="${roomId}"]`) || document.querySelector(`.room-btn`);
+            // Usar o atributo data-room para selecionar o botão correto
+            const btn = document.querySelector(`[data-room="${roomId}"]`);
             if (btn) btn.classList.add('active');
 
-            let icon = '👥', title = 'Sala Aberta', subtitle = 'Todos podem visualizar';
+            let icon = '👥', title = 'Sala Aberta', subtitle = 'Todos os funcionários podem visualizar';
             if (roomId === 'privada') {
-                icon = '🔒'; title = 'Sala Privada'; subtitle = 'Conversas confidenciais';
+                icon = '🔒'; title = 'Sala Privada'; subtitle = 'Conversas confidenciais (Habilita ferramentas)';
             } else if (type === 'group') {
                 const g = state.groups.find(g => g.id === roomId);
-                if (g) { icon = g.icon; title = g.name; subtitle = 'Grupo fechado'; }
+                if (g) { icon = g.icon; title = g.name; subtitle = 'Grupo fechado (Habilita ferramentas)'; }
             } else if (type === 'private') {
                 const u = state.users.find(u => u.id === userId);
                 if (u) {
                     icon = u.avatarType === 'image' ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;">` : u.avatar;
                     title = u.displayName;
-                    subtitle = 'Mensagem privada';
+                    subtitle = 'Mensagem privada (Habilita ferramentas)';
                 }
             }
 
             const iconEl = document.getElementById('chatIcon');
-            if (typeof icon === 'string') {
+            if (typeof icon === 'string' && !icon.includes('<img')) {
                 iconEl.textContent = icon;
                 iconEl.innerHTML = icon;
             } else {
@@ -1067,6 +1159,14 @@
             state.chatSearchTerm = '';
             document.getElementById('chatSearch').value = '';
             renderMessages();
+            
+            // NOVO: Fecha a sidebar no mobile após trocar de sala
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('show-mobile')) {
+                    setTimeout(() => sidebar.classList.remove('show-mobile'), 300); 
+                }
+            }
         }
 
         // Mensagens
@@ -1168,13 +1268,28 @@
 
         // Eventos
         document.addEventListener('click', function(e) {
+            // Lógica para fechar o emoji picker
             const picker = document.getElementById('emojiPicker');
             const btn = document.querySelector('.emoji-btn');
             if (picker && !picker.contains(e.target) && (!btn || !btn.contains(e.target))) {
                 picker.classList.remove('show');
             }
+            // Lógica para fechar os modais
             if (e.target === document.getElementById('settingsModal')) closeSettings();
             if (e.target === document.getElementById('usersModal')) closeUsersModal();
+
+            // NOVO: Lógica para fechar a sidebar no mobile ao clicar fora
+            const sidebar = document.getElementById('sidebar');
+            // Usamos a div do chat-layout como referência para o botão de toggle para evitar bugs de click
+            const toggleButtonContainer = document.querySelector('.chat-header-left'); 
+
+            if (window.innerWidth <= 768 && sidebar.classList.contains('show-mobile')) {
+                // Se o clique não foi na sidebar e não foi no container do botão de toggle
+                if (!sidebar.contains(e.target) && !toggleButtonContainer.contains(e.target)) {
+                    // Clicou fora da sidebar
+                    sidebar.classList.remove('show-mobile');
+                }
+            }
         });
 
         document.addEventListener('keypress', function(e) {
